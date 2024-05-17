@@ -369,7 +369,8 @@ PyObject* get_array(const std::vector<Numeric>& v)
         PyArray_UpdateFlags(reinterpret_cast<PyArrayObject*>(varray), NPY_ARRAY_OWNDATA);
         return varray;
     }
-
+	
+	_import_array();
     PyObject* varray = PyArray_SimpleNewFromData(1, &vsize, type, (void*)(v.data()));
     return varray;
 }
@@ -805,8 +806,12 @@ bool fill(const std::vector<Numeric>& x, const std::vector<Numeric>& y, const st
     // construct keyword args
     PyObject* kwargs = PyDict_New();
     for (auto it = keywords.begin(); it != keywords.end(); ++it) {
-        PyDict_SetItemString(kwargs, it->first.c_str(), PyUnicode_FromString(it->second.c_str()));
-    }
+		if (it->first == "alpha") {
+      		PyDict_SetItemString(kwargs, it->first.c_str(), PyFloat_FromDouble(std::stod(it->second)));
+    	} else {
+        	PyDict_SetItemString(kwargs, it->first.c_str(), PyUnicode_FromString(it->second.c_str()));
+    	}
+	}
 
     PyObject* res = PyObject_Call(detail::_interpreter::get().s_python_function_fill, args, kwargs);
 
@@ -1831,7 +1836,7 @@ bool stem(const std::vector<Numeric>& y, const std::string& format = "")
 }
 
 template<typename Numeric>
-void text(Numeric x, Numeric y, const std::string& s = "")
+void text(Numeric x, Numeric y, const std::string& s = "", const std::map<std::string, std::string>& keywords = {})
 {
     detail::_interpreter::get();
 
@@ -1840,10 +1845,17 @@ void text(Numeric x, Numeric y, const std::string& s = "")
     PyTuple_SetItem(args, 1, PyFloat_FromDouble(y));
     PyTuple_SetItem(args, 2, PyString_FromString(s.c_str()));
 
-    PyObject* res = PyObject_CallObject(detail::_interpreter::get().s_python_function_text, args);
+    // construct keyword args
+    PyObject* kwargs = PyDict_New();
+    for (auto it = keywords.begin(); it != keywords.end(); ++it) {
+        PyDict_SetItemString(kwargs, it->first.c_str(), PyUnicode_FromString(it->second.c_str()));
+    }
+
+    PyObject* res = PyObject_Call(detail::_interpreter::get().s_python_function_text, args, kwargs);
     if(!res) throw std::runtime_error("Call to text() failed.");
 
     Py_DECREF(args);
+    Py_DECREF(kwargs);
     Py_DECREF(res);
 }
 
